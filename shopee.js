@@ -55,7 +55,9 @@
     return { reviews, legit, deal };
   }
   const chk = (v, yes, no, ask) => `<span class="chk ${v === 1 ? 'y' : v === 0 ? 'n' : ''}">${v === 1 ? '✓ ' + yes : v === 0 ? '✗ ' + no : '? ' + ask}</span>`;
-  const picSrc = i => i.img || (/^https?:\/\//i.test(i.imgUrl || '') ? i.imgUrl : '');
+  // hide generic Shopee logos/placeholders: on Shopee hosts a product photo always lives under /file/<hash>
+  const goodImg = u => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) && (!/shopee|susercontent/i.test(x.hostname) || /\/file\/[\w-]+/.test(x.pathname)); } catch { return false; } };
+  const picSrc = i => i.img || (goodImg(i.imgUrl || '') ? i.imgUrl : '');
   const safeUrl = u => /^https?:\/\//i.test(u) ? u : '#';
   const ib = (a, label, n, dis) => `<button class="icon" data-sa="${a}" aria-label="${label}" title="${label}"${dis ? ' disabled' : ''}>${svg(n)}</button>`;
 
@@ -80,7 +82,7 @@
         mut(arr => {
           const x = arr.find(i => i.id === it.id); if (!x) return;
           if (d.name && (!x.name || x.name === DEFAULT_NAME)) x.name = d.name;
-          if (d.image && !x.img && !x.imgUrl) x.imgUrl = d.image;
+          if (d.image && !x.img && (!x.imgUrl || !goodImg(x.imgUrl))) x.imgUrl = d.image;
           if (d.price && !x.price) x.price = d.price;
           if (d.rating && !hasNum(x.rating)) x.rating = d.rating;
           if (hasNum(d.reviews) && !hasNum(x.reviews) && d.rating) x.reviews = d.reviews;
