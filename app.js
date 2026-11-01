@@ -243,7 +243,7 @@ $('#switchList').addEventListener('click', async () => {
 $('#invite').addEventListener('click', async () => {
   const url = location.origin + location.pathname + '?list=' + encodeURIComponent(listCode);
   try {
-    if (navigator.share) await navigator.share({ title: 'Priority Lost', text: 'Join our shopping list', url });
+    if (navigator.share) await navigator.share({ title: 'Priority List', text: 'Join our shopping list', url });
     else { await navigator.clipboard.writeText(url); toast('Invite link copied'); }
   } catch {}
 });
