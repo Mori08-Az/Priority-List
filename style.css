@@ -126,3 +126,15 @@ dialog{max-height:92vh;overflow:auto}
 .tabbtn.on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
 .shopee-head{margin-top:14px;padding:12px;display:grid;gap:8px}
 .sstats{display:flex;gap:6px;flex-wrap:wrap}.sstats span{font-size:.8rem;font-weight:600;background:var(--bg);padding:4px 10px;border-radius:99px}
+
+.prod{display:flex;gap:10px;align-items:flex-start}
+.thumb{width:64px;height:64px;border-radius:12px;object-fit:cover;background:var(--bg);flex:none}
+.checks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chk{font-size:.74rem;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--bg);color:var(--muted)}
+.chk.y{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.chk.n{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
+.ready{background:var(--ok);color:#fff;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:99px;margin-left:8px;vertical-align:middle}
+.final{color:var(--ok);font-weight:700;margin-left:6px}
+.photo-row{display:flex;gap:12px;align-items:center}
+.photo-pick{display:grid;place-items:center;cursor:pointer;font-size:.9rem;color:var(--text)}
+.photo-btns{display:grid;gap:4px;flex:1}
