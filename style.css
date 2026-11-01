@@ -138,3 +138,5 @@ dialog{max-height:92vh;overflow:auto}
 .photo-row{display:flex;gap:12px;align-items:center}
 .photo-pick{display:grid;place-items:center;cursor:pointer;font-size:.9rem;color:var(--text)}
 .photo-btns{display:grid;gap:4px;flex:1}
+
+.prod{color:inherit;text-decoration:none}.prod:active{opacity:.7}
