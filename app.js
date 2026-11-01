@@ -47,15 +47,30 @@ function firebaseStore() {
 }
 function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
 
+const cleanCode = v => (v || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+
+function askCode(current, firstTime) {
+  return new Promise(resolve => {
+    const dlg = $('#codeDlg');
+    $('#codeInput').value = current || '';
+    $('#codeHelp').textContent = firstTime
+      ? 'Type the list code you and your family share. Everyone with the same code sees the same list.'
+      : 'Changing this switches to a different list. Use the same code on every phone.';
+    dlg.addEventListener('cancel', e => { if (firstTime) e.preventDefault(); }, { once: true });
+    dlg.addEventListener('close', () => resolve(cleanCode($('#codeInput').value)), { once: true });
+    dlg.showModal();
+  });
+}
+
 async function init() {
-  if (!listCode) {
-    const hasFb = !!window.FIREBASE_CONFIG;
-    const v = prompt(hasFb
-      ? 'Enter your family list code (everyone who uses the same code sees the same list). Example: ourhome-2026'
-      : 'Name this list (stays on this device until you set up sync - see README):', 'family');
-    listCode = (v || 'family').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-') || 'family';
-    ls.set('pl_code', listCode);
+  const urlCode = cleanCode(new URLSearchParams(location.search).get('list'));
+  if (urlCode) { listCode = urlCode; ls.set('pl_code', listCode); }
+  while (!listCode) {
+    listCode = await askCode('', true);
+    if (listCode) ls.set('pl_code', listCode);
   }
+  // keep the code in the address so "Add to Home Screen" and bookmarks remember it
+  try { history.replaceState(null, '', '?list=' + encodeURIComponent(listCode)); } catch {}
   $('#listCode').textContent = 'List: ' + listCode;
   if (window.FIREBASE_CONFIG) {
     try {
@@ -69,7 +84,7 @@ async function init() {
 }
 function setSync(m) {
   const el = $('#sync');
-  el.textContent = m === 'on' ? '● Synced' : m === 'error' ? '! Offline' : 'This device only';
+  el.textContent = m === 'on' ? 'Synced' : m === 'error' ? 'Offline' : 'This device only';
   el.className = 'pill' + (m === 'on' ? ' on' : '');
 }
 function onData(s) {
@@ -142,39 +157,51 @@ function openEdit(id) {
 }
 
 /* ---------- render ---------- */
+const ICONS = {
+  up: '<path d="M6 15l6-6 6 6"/>',
+  down: '<path d="M6 9l6 6 6-6"/>',
+  top: '<path d="M5 4h14M6 17l6-6 6 6"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16v4z"/>',
+  trash: '<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/>'
+};
+const svg = n => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+const hue = name => { let h = 0; for (const c of String(name || '?')) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const avatar = name => name ? `<span class="av" style="--h:${hue(name)}" title="${esc(name)}">${esc(name[0].toUpperCase())}</span>${esc(name)}` : '';
+const iconBtn = (a, label, n, dis) => `<button class="icon" data-a="${a}" aria-label="${label}" title="${label}"${dis ? ' disabled' : ''}>${svg(n)}</button>`;
+
 function render() {
   const act = state.items.filter(i => !i.boughtAt);
   const done = state.items.filter(i => i.boughtAt).sort((a, b) => b.boughtAt.localeCompare(a.boughtAt));
   const total = act.reduce((t, i) => t + (i.price || 0) * (i.qty || 1), 0);
-  $('#summary').textContent = act.length ? `${act.length} to buy` + (total ? ` · est. ${money(total)}` : '') : '';
+  $('#summary').innerHTML = act.length
+    ? `<span class="stat">${act.length} to buy</span>` + (total ? `<span class="stat">≈ ${money(total)}</span>` : '')
+    : '<span class="stat">All caught up</span>';
   $('#empty').hidden = act.length > 0;
   $('#list').innerHTML = act.map((it, n) => `
     <li class="item${n === 0 ? ' next' : ''}" data-id="${it.id}">
       <div class="rank">${n + 1}</div>
       <div>
-        <div class="title">${esc(it.name)}${it.qty > 1 ? ` ×${it.qty}` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}</div>
+        <div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}</div>
         ${it.note ? `<div class="note">${esc(it.note)}</div>` : ''}
-        <div class="meta">Added ${fmtDate(it.addedAt)} (${ago(it.addedAt)})${it.addedBy ? ' by ' + esc(it.addedBy) : ''}${it.price ? ' · ' + money(it.price) : ''}</div>
+        <div class="meta">${avatar(it.addedBy)}<span>· Added ${fmtDate(it.addedAt)} (${ago(it.addedAt)})</span>${it.price ? `<span>· ${money(it.price)}</span>` : ''}</div>
       </div>
+      <div class="move">${iconBtn('up', 'Move up', 'up', n === 0)}${iconBtn('down', 'Move down', 'down', n === act.length - 1)}</div>
       <div class="actions">
-        <button data-a="top" title="Move to top" ${n === 0 ? 'disabled' : ''}>⤒</button>
-        <button data-a="up" title="Move up" ${n === 0 ? 'disabled' : ''}>▲</button>
-        <button data-a="down" title="Move down" ${n === act.length - 1 ? 'disabled' : ''}>▼</button>
-        <button data-a="buy" class="buy">✓ Bought</button>
-        <button data-a="edit" title="Edit">✎</button>
-        <button data-a="del" title="Delete" class="danger">✕</button>
+        <button class="buy" data-a="buy">${svg('check')} Bought</button>
+        ${iconBtn('top', 'Move to top', 'top', n === 0)}${iconBtn('edit', 'Edit', 'edit')}${iconBtn('del', 'Delete', 'trash')}
       </div>
     </li>`).join('');
   $('#boughtCount').textContent = done.length ? `(${done.length})` : '';
   $('#clearHistory').hidden = !done.length;
   $('#history').innerHTML = done.map(it => `
     <li class="item done" data-id="${it.id}">
-      <div class="rank">✓</div>
+      <div class="rank">${svg('check').replace('<svg', '<svg width="18" height="18" style="fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round"')}</div>
       <div>
-        <div class="title">${esc(it.name)}${it.qty > 1 ? ` ×${it.qty}` : ''}</div>
-        <div class="meta">Added ${fmtDate(it.addedAt)} · Bought ${fmtDate(it.boughtAt)}${it.boughtBy ? ' by ' + esc(it.boughtBy) : ''}</div>
+        <div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}</div>
+        <div class="meta">Added ${fmtDate(it.addedAt)} · Bought ${fmtDate(it.boughtAt)}${it.boughtBy ? ' · ' + avatar(it.boughtBy) : ''}</div>
       </div>
-      <div class="actions"><button data-a="restore">↩ Back to list</button><button data-a="del" class="danger">✕</button></div>
+      <div class="actions"><button class="restore" data-a="restore">↩ Back to list</button>${iconBtn('del', 'Delete', 'trash')}</div>
     </li>`).join('');
   const w = $('#who');
   w.innerHTML = state.people.map(p => `<option${p === me ? ' selected' : ''}>${esc(p)}</option>`).join('') + '<option value="__add">+ Add person…</option>';
@@ -209,7 +236,18 @@ $('#editForm').addEventListener('submit', e => {
 });
 $('#eCancel').addEventListener('click', () => $('#editDlg').close());
 $('#clearHistory').addEventListener('click', () => { if (confirm('Remove all bought items from history?')) mutate(s => { s.items = s.items.filter(i => !i.boughtAt); }); });
-$('#switchList').addEventListener('click', () => { ls.set('pl_code', ''); location.reload(); });
+$('#switchList').addEventListener('click', async () => {
+  const c = await askCode(listCode, false);
+  if (c && c !== listCode) { ls.set('pl_code', c); location.href = location.pathname + '?list=' + encodeURIComponent(c); }
+});
+$('#invite').addEventListener('click', async () => {
+  const url = location.origin + location.pathname + '?list=' + encodeURIComponent(listCode);
+  try {
+    if (navigator.share) await navigator.share({ title: 'Priority Lost', text: 'Join our shopping list', url });
+    else { await navigator.clipboard.writeText(url); toast('Invite link copied'); }
+  } catch {}
+});
+$('#codeForm').addEventListener('submit', () => {});
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 init();
