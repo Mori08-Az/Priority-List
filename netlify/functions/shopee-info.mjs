@@ -46,18 +46,34 @@ export function parseHtml(html) {
   return out;
 }
 
-export default async (req) => {
-  const target = new URL(req.url).searchParams.get('url') || '';
-  let u; try { u = new URL(target); } catch { return json({ error: 'bad url' }, 400); }
-  if (u.protocol !== 'https:' || !HOST_OK(u.hostname)) return json({ error: 'not a Shopee link' }, 400);
+const UA_DESKTOP = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+const PRODUCT = /-i\.\d+\.\d+|\/product\/\d+\/\d+/;
 
-  const debug = new URL(req.url).searchParams.get('debug') === '1', trace = [];
-  let cur = u.href, html = '';
+// Short links return a small launcher page; the real product link may be written inside it (JS redirect / app link).
+export function findProductUrl(html) {
+  const variants = [html];
+  const plain = html.replace(/\\u002F/gi, '/').replace(/\\\//g, '/').replace(/&amp;/g, '&');
+  variants.push(plain);
+  try { variants.push(decodeURIComponent(plain)); } catch {}
+  for (const v of variants) {
+    for (const m of v.matchAll(/https?:\/\/[^\s"'<>\\)?&#=]+/g)) {
+      try { const x = new URL(m[0]); if (HOST_OK(x.hostname) && PRODUCT.test(decodeURIComponent(x.pathname))) return x.href; } catch {}
+    }
+  }
+  return '';
+}
+export function candidates(html) {
+  const plain = html.replace(/\\u002F/gi, '/').replace(/\\\//g, '/').replace(/&amp;/g, '&');
+  return [...new Set(plain.match(/https?:\/\/[^\s"'<>\\)]+/g) || [])].filter(u => { try { return HOST_OK(new URL(u).hostname); } catch { return false; } }).slice(0, 25);
+}
+
+async function resolve(startUrl, ua, trace) {
+  let cur = startUrl, html = '';
   try {
     for (let hop = 0; hop < 6; hop++) {
-      const r = await fetch(cur, { redirect: 'manual', headers: { 'user-agent': UA, 'accept-language': 'en-PH,en;q=0.9', accept: 'text/html,*/*' }, signal: AbortSignal.timeout(8000) });
+      const r = await fetch(cur, { redirect: 'manual', headers: { 'user-agent': ua, 'accept-language': 'en-PH,en;q=0.9', accept: 'text/html,*/*' }, signal: AbortSignal.timeout(8000) });
       const loc = r.headers.get('location');
-      trace.push({ url: cur, status: r.status, type: r.headers.get('content-type'), location: loc });
+      trace.push({ ua: ua === UA ? 'mobile' : 'desktop', url: cur, status: r.status, type: r.headers.get('content-type'), location: loc });
       if (r.status >= 300 && r.status < 400 && loc) {
         const next = new URL(loc, cur);
         if (next.protocol !== 'https:' || !HOST_OK(next.hostname)) break;
@@ -66,10 +82,36 @@ export default async (req) => {
       if (r.ok && /text\/html/i.test(r.headers.get('content-type') || '')) html = (await r.text()).slice(0, 1_500_000);
       break;
     }
-  } catch (e) { trace.push({ error: String(e && e.message || e) }); }
-  // Shopee often puts the real product link in a "redirect" style query on app-link pages
-  try { const inner = new URL(cur).searchParams.get('redirect') || new URL(cur).searchParams.get('url'); if (inner && /-i\.\d+\.\d+/.test(decodeURIComponent(inner))) cur = decodeURIComponent(inner); } catch {}
+  } catch (e) { trace.push({ error: String((e && e.message) || e) }); }
+  return { cur, html };
+}
+
+export default async (req) => {
+  const q = new URL(req.url).searchParams;
+  const target = q.get('url') || '';
+  let u; try { u = new URL(target); } catch { return json({ error: 'bad url' }, 400); }
+  if (u.protocol !== 'https:' || !HOST_OK(u.hostname)) return json({ error: 'not a Shopee link' }, 400);
+  const debug = q.get('debug') === '1', trace = [];
+
+  let { cur, html } = await resolve(u.href, UA, trace);
+  let product = PRODUCT.test(safeDecode(cur)) ? cur : findProductUrl(html);
+  if (!product) { // try once more as a desktop browser
+    const second = await resolve(u.href, UA_DESKTOP, trace);
+    const found = PRODUCT.test(safeDecode(second.cur)) ? second.cur : findProductUrl(second.html);
+    if (found || (!html && second.html)) { cur = second.cur; html = second.html; product = found; }
+  }
+  if (product) {
+    cur = product;
+    // the product page itself may carry a name/photo; the URL alone already gives the name
+    const page = await resolve(product, UA, trace);
+    if (page.html) html = page.html;
+  }
+  try { const inner = new URL(cur).searchParams.get('redirect') || new URL(cur).searchParams.get('url'); if (inner && PRODUCT.test(decodeURIComponent(inner))) cur = decodeURIComponent(inner); } catch {}
   const fromUrl = nameFromUrl(cur), page = parseHtml(html);
-  if (debug) return Response.json({ trace, finalUrl: cur, htmlLength: html.length, pageTitle: (html.match(/<title>([^<]*)<\/title>/i) || [])[1] || null, parsed: parseHtml(html), htmlStart: html.slice(0, 400) });
+  if (debug) {
+    const scripts = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1].trim().slice(0, 500)).filter(Boolean).slice(0, 4);
+    return Response.json({ trace, finalUrl: cur, productUrlFound: product || null, name: fromUrl.name, htmlLength: html.length, pageTitle: (html.match(/<title>([^<]*)<\/title>/i) || [])[1] || null, parsed: page, shopeeLinksInPage: candidates(html), inlineScripts: scripts });
+  }
   return json({ finalUrl: cur, name: page.title || fromUrl.name || '', shopId: fromUrl.shopId || '', itemId: fromUrl.itemId || '', ...page, title: undefined });
 };
+function safeDecode(x) { try { return decodeURIComponent(x); } catch { return x; } }
