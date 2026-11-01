@@ -1,4 +1,4 @@
-# Priority Lost
+# Priority List
 
 A shared, priority-ordered shopping list for the family. Open it on any phone, add what you need, and keep the most important thing at the top so you never buy the small stuff first.
 
