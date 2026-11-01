@@ -6,6 +6,7 @@
   const STAGES = { new: 'To check', checked: 'Checked', cart: 'In cart' };
   const NEXT = { new: 'Mark checked', checked: 'Put in cart', cart: 'Bought' };
   const NEXT_KEY = { new: 'checked', checked: 'cart' };
+  const PREV_KEY = { checked: 'new', cart: 'checked' };
   const STORE = { mall: 'Shopee Mall', preferred: 'Preferred', regular: 'Regular seller', '': 'Store ?' };
   let filter = 'all', editingId = null, pendingImg;
   const list = () => state.shopee || [];
@@ -180,6 +181,7 @@
         </div>
         <div class="move">${ib('up', 'Move up', 'up', n === 0)}${ib('down', 'Move down', 'down', n === act.length - 1)}</div>
         <div class="actions">
+          ${PREV_KEY[st] ? `<button class="icon" data-sa="back" aria-label="Undo: back to ${STAGES[PREV_KEY[st]]}" title="Undo: back to ${STAGES[PREV_KEY[st]]}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h10a6 6 0 010 12h-3"/></svg></button>` : ''}
           <button class="stage${st === 'cart' ? ' ok' : ''}" data-sa="next">${NEXT[st]}</button>
           <a class="open" href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener" title="Open on Shopee">↗</a>
           ${ib('top', 'Move to top', 'top', n === 0)}${ib('edit', 'Edit', 'edit')}${ib('del', 'Delete', 'trash')}
@@ -203,7 +205,7 @@
     const b = e.target.closest('button[data-sa]'); if (!b) return;
     const id = b.closest('li').dataset.id;
     ({
-      top: () => move(id, 'top'), up: () => move(id, -1), down: () => move(id, 1), next: () => advance(id), edit: () => openEdit(id),
+      top: () => move(id, 'top'), up: () => move(id, -1), down: () => move(id, 1), next: () => advance(id), back: () => mut(arr => { const x = arr.find(i => i.id === id); if (x && PREV_KEY[x.stage]) x.stage = PREV_KEY[x.stage]; }), edit: () => openEdit(id),
       del: () => { const it = list().find(i => i.id === id); if (it && confirm(`Delete "${it.name}"?`)) mut(arr => { const k = arr.findIndex(i => i.id === id); if (k >= 0) arr.splice(k, 1); }); },
       restore: () => mut(arr => { const k = arr.findIndex(i => i.id === id); if (k < 0) return; const [it] = arr.splice(k, 1); delete it.boughtAt; delete it.boughtBy; it.stage = 'cart'; arr.push(it); })
     })[b.dataset.sa]();
