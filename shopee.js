@@ -2,6 +2,7 @@
 /* Shopee tab — stored in the same list document as the Priority List (field: shopee). */
 (() => {
   const peso = n => '₱' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const DEFAULT_NAME = 'Shopee item (tap Edit to name it)';
   const hasNum = v => v !== '' && v != null && !isNaN(v);
   const STAGES = { new: 'To check', checked: 'Checked', cart: 'In cart' };
   const NEXT = { new: 'Mark checked', checked: 'Put in cart', cart: 'Bought' };
@@ -54,6 +55,8 @@
 
   /* Shopee's "More → Copy" message: "Check out <name> at 68% off! ₱109 only. Get it on Shopee now! <link>" */
   const LINK_RE = /https?:\/\/(?:[\w-]+\.)?(?:shopee\.[a-z.]+|shope\.ee|shp\.ee)\/[^\s<>"')]+/gi;
+  // drops leftovers of Shopee's message from a name (also repairs items saved earlier with them)
+  const cleanName = n => String(n || '').replace(/\s+/g, ' ').replace(/\s+for\s+₱\s?[\d,]+(?:\.\d+)?\.?\s*Get it on Shopee now!?\s*$/i, '').replace(/[.\s]*Get it on Shopee now!?\s*$/i, '').trim();
   function parseShares(text) {
     const out = [], seen = new Set(); let prev = 0, m;
     LINK_RE.lastIndex = 0;
@@ -61,44 +64,16 @@
       const url = m[0].replace(/[.,;]+$/, ''), seg = text.slice(prev, m.index); prev = m.index + m[0].length;
       if (seen.has(url)) continue; seen.add(url);
       const info = { url };
-      const a = seg.match(/Check out\s+([\s\S]+?)\s+at\s+(\d+)%\s*off/i), b = a || seg.match(/Check out\s+([\s\S]+?)\s*!/i);
-      if (b) info.name = b[1].replace(/\s+/g, ' ').trim();
-      if (a) info.pct = +a[2];
+      // shape A: "Check out <name> at 68% off! ₱109 only. …"   shape B: "Check out <name> for ₱2,283. Get it on Shopee now!"
+      const A = seg.match(/Check out\s+([\s\S]+?)\s+at\s+(\d+)%\s*off/i), B = seg.match(/Check out\s+([\s\S]+?)\s+for\s+₱\s?[\d,]+/i);
+      const C = seg.match(/Check out\s+([\s\S]+?)\s*!/i), hit = A || B || C;
+      if (hit) info.name = cleanName(hit[1]);
+      if (A) info.pct = +A[2];
       const pr = seg.match(/₱\s?([\d,]+(?:\.\d+)?)/); if (pr) info.price = +pr[1].replace(/,/g, '');
       if (info.price && info.pct > 0 && info.pct < 95) info.orig = Math.round(info.price / (1 - info.pct / 100));
       out.push(info);
     }
     return out;
-  }
-
-  /* automatic lookup (Netlify function; best effort — Shopee may block it) */
-  const DEFAULT_NAME = 'Shopee item (tap Edit to name it)';
-  async function lookup(url) {
-    if (!/^https?:$/.test(location.protocol)) return null;
-    try {
-      const r = await fetch('/.netlify/functions/shopee-info?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(15000) });
-      if (!r.ok || !/json/.test(r.headers.get('content-type') || '')) return null;
-      const d = await r.json();
-      return (d.name || d.image || d.price) ? d : null;
-    } catch { return null; }
-  }
-  async function autofill(items) {
-    let found = 0;
-    const queue = [...items];
-    await Promise.all([0, 1, 2].map(async () => {
-      for (let it; (it = queue.shift());) {
-        const d = await lookup(it.url); if (!d) continue;
-        found++;
-        mut(arr => {
-          const x = arr.find(i => i.id === it.id); if (!x) return;
-          if (d.name && (!x.name || x.name === DEFAULT_NAME)) x.name = d.name;
-          if (d.image && !x.img && (!x.imgUrl || !goodImg(x.imgUrl))) x.imgUrl = d.image;
-          if (d.price && !x.price) x.price = d.price;
-          if (d.shopId && !x.shopId) { x.shopId = d.shopId; x.itemId = d.itemId; }
-        });
-      }
-    }));
-    toast(found ? `Filled in details for ${found} item${found > 1 ? 's' : ''}` : 'Couldn\'t read details from Shopee — tap Edit to fill in');
   }
 
   /* actions */
@@ -124,7 +99,6 @@
       else arr.push(...fresh);
     });
     $('#sAddForm').reset();
-    if (fresh.length) autofill(fresh.filter(i => i.name === DEFAULT_NAME));
     toast(`${fresh.length ? 'Added ' + fresh.length : ''}${fresh.length && updates.length ? ' · ' : ''}${updates.length ? 'Updated ' + updates.length : ''}${skipped ? ` · ${skipped} duplicate skipped` : ''}`);
   }
   function move(id, dir) {
@@ -152,7 +126,7 @@
     const it = list().find(i => i.id === id); if (!it) return;
     editingId = id;
     const set = (k, v) => { $('#se' + k).value = v ?? ''; };
-    set('Name', it.name === DEFAULT_NAME ? '' : it.name); set('Url', it.url); set('Sale', it.sale); set('Stage', it.stage || 'new');
+    set('Name', it.name === DEFAULT_NAME ? '' : cleanName(it.name)); set('Url', it.url); set('Sale', it.sale); set('Stage', it.stage || 'new');
     set('Voucher', it.voucher); set('Note', it.note);
     set('Price', it.price || ''); set('Orig', it.orig || '');
     set('Qty', it.qty || 1);
@@ -213,7 +187,7 @@
           <a class="prod" href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener" title="Open on Shopee">
             ${pic ? `<img class="thumb" src="${esc(pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
             <div>
-              <div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}</div>
+              <div class="title">${esc(cleanName(it.name))}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}</div>
               <div class="price">${it.price ? peso(it.price) : '<span class="muted">no price yet</span>'}${d ? `<s>${peso(it.orig)}</s><em>-${d}%</em>` : ''}${ex ? `<span class="final">→ ${peso(finalPrice(it))} after vouchers</span>` : ''}</div>
             </div>
           </a>
@@ -260,17 +234,6 @@
     const img = pendingImg;
     mut(arr => { const it = arr.find(i => i.id === editingId); if (!it) return; Object.assign(it, vals, { name: vals.name || it.name, url: vals.url || it.url }); if (img !== undefined) it.img = img; });
     if (img && sizeKB() > 700) toast('List is getting big — use image links instead of photos for new items');
-  });
-  $('#seFetch').addEventListener('click', async () => {
-    const b = $('#seFetch'); b.disabled = true; b.textContent = 'Looking…';
-    const d = await lookup($('#seUrl').value.trim());
-    b.disabled = false; b.textContent = '↻ Fetch name & photo from link';
-    if (!d) { toast('Couldn\'t read that link — Shopee may be blocking it'); return; }
-    const set = (id, v) => { if (v) $(id).value = v; };
-    if (d.name && (!$('#seName').value.trim() || $('#seName').value === DEFAULT_NAME)) $('#seName').value = d.name;
-    if (!$('#seImg').value && !$('#sePreview').src.startsWith('data:')) set('#seImg', d.image);
-    if (!$('#sePrice').value) set('#sePrice', d.price);
-    toast('Filled in what was found — tap Save');
   });
   $('#seCancel').addEventListener('click', () => $('#sEditDlg').close());
   $('#sCopyCart').addEventListener('click', () => {
