@@ -59,6 +59,38 @@
   const safeUrl = u => /^https?:\/\//i.test(u) ? u : '#';
   const ib = (a, label, n, dis) => `<button class="icon" data-sa="${a}" aria-label="${label}" title="${label}"${dis ? ' disabled' : ''}>${svg(n)}</button>`;
 
+  /* automatic lookup (Netlify function; best effort — Shopee may block it) */
+  const DEFAULT_NAME = 'Shopee item (tap Edit to name it)';
+  async function lookup(url) {
+    if (!/^https?:$/.test(location.protocol)) return null;
+    try {
+      const r = await fetch('/.netlify/functions/shopee-info?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(15000) });
+      if (!r.ok || !/json/.test(r.headers.get('content-type') || '')) return null;
+      const d = await r.json();
+      return (d.name || d.image || d.price || d.rating) ? d : null;
+    } catch { return null; }
+  }
+  async function autofill(items) {
+    let found = 0;
+    const queue = [...items];
+    await Promise.all([0, 1, 2].map(async () => {
+      for (let it; (it = queue.shift());) {
+        const d = await lookup(it.url); if (!d) continue;
+        found++;
+        mut(arr => {
+          const x = arr.find(i => i.id === it.id); if (!x) return;
+          if (d.name && (!x.name || x.name === DEFAULT_NAME)) x.name = d.name;
+          if (d.image && !x.img && !x.imgUrl) x.imgUrl = d.image;
+          if (d.price && !x.price) x.price = d.price;
+          if (d.rating && !hasNum(x.rating)) x.rating = d.rating;
+          if (hasNum(d.reviews) && !hasNum(x.reviews) && d.rating) x.reviews = d.reviews;
+          if (d.shopId && !x.shopId) { x.shopId = d.shopId; x.itemId = d.itemId; }
+        });
+      }
+    }));
+    toast(found ? `Filled in details for ${found} item${found > 1 ? 's' : ''}` : 'Couldn\'t read details from Shopee — tap Edit to fill in');
+  }
+
   /* actions */
   function add(top) {
     const links = extract($('#sPaste').value);
@@ -76,6 +108,7 @@
       else arr.push(...fresh);
     });
     $('#sAddForm').reset();
+    autofill(fresh);
     toast(`Added ${fresh.length}${skipped ? ` · ${skipped} duplicate skipped` : ''}`);
   }
   function move(id, dir) {
@@ -218,6 +251,19 @@
     const img = pendingImg;
     mut(arr => { const it = arr.find(i => i.id === editingId); if (!it) return; Object.assign(it, vals, { name: vals.name || it.name, url: vals.url || it.url }); if (img !== undefined) it.img = img; });
     if (img && sizeKB() > 700) toast('List is getting big — use image links instead of photos for new items');
+  });
+  $('#seFetch').addEventListener('click', async () => {
+    const b = $('#seFetch'); b.disabled = true; b.textContent = 'Looking…';
+    const d = await lookup($('#seUrl').value.trim());
+    b.disabled = false; b.textContent = '↻ Fetch name & photo from link';
+    if (!d) { toast('Couldn\'t read that link — Shopee may be blocking it'); return; }
+    const set = (id, v) => { if (v) $(id).value = v; };
+    if (d.name && (!$('#seName').value.trim() || $('#seName').value === DEFAULT_NAME)) $('#seName').value = d.name;
+    if (!$('#seImg').value && !$('#sePreview').src.startsWith('data:')) set('#seImg', d.image);
+    if (!$('#sePrice').value) set('#sePrice', d.price);
+    if (!$('#seRating').value) set('#seRating', d.rating);
+    if (!$('#seReviews').value && d.rating) set('#seReviews', d.reviews);
+    toast('Filled in what was found — tap Save');
   });
   $('#seCancel').addEventListener('click', () => $('#sEditDlg').close());
   $('#sCopyCart').addEventListener('click', () => {
