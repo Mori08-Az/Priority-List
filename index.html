@@ -34,6 +34,12 @@
     </div>
   </header>
 
+  <nav class="tabbar" id="tabbar">
+    <button class="tabbtn on" data-pane="list">Priority List</button>
+    <button class="tabbtn" data-pane="shopee">🛍 Shopee</button>
+  </nav>
+
+  <div id="paneList">
   <form id="addForm" class="card add">
     <div class="add-main">
       <input id="name" placeholder="Add something to buy…" autocomplete="off" required>
@@ -69,6 +75,33 @@
       <button id="clearHistory" class="link danger" hidden>Clear bought history</button>
     </details>
   </section>
+  </div>
+
+  <div id="paneShopee" hidden>
+    <div class="card shopee-head"><div id="sSale" class="sale-pill"></div><div id="sSummary" class="sstats"></div></div>
+    <form id="sAddForm" class="card add">
+      <textarea id="sPaste" placeholder="Paste Shopee links here — one or many, other text is fine…" required></textarea>
+      <select id="sAddSale" class="sel" aria-label="Target sale"></select>
+      <div class="row">
+        <button type="submit" class="btn primary">Add to bottom</button>
+        <button type="button" id="sAddTop" class="btn">Add as #1</button>
+      </div>
+      <div class="hint">Shopee doesn't let other sites read prices or reviews — open the link (↗) and fill them in with Edit.</div>
+    </form>
+    <section>
+      <h2>Shopee to buy</h2>
+      <div id="sChips" class="chips"></div>
+      <ol id="sList" class="list"></ol>
+      <div id="sEmpty" class="empty" hidden><div class="empty-icon">✓</div><p>Nothing here.</p><small>Paste a Shopee link above.</small></div>
+    </section>
+    <section>
+      <details class="history">
+        <summary>Shopee bought <span id="sBoughtCount"></span></summary>
+        <ul id="sHistory" class="list"></ul>
+      </details>
+      <button id="sCopyCart" class="link">Copy cart list</button>
+    </section>
+  </div>
 
   <footer>
     <div id="listCode"></div>
@@ -95,6 +128,45 @@
   </form>
 </dialog>
 
+<dialog id="sEditDlg">
+  <form method="dialog" id="sEditForm">
+    <h3>Edit item</h3>
+    <label>Name<input id="seName" required></label>
+    <label>Link<input id="seUrl" inputmode="url"></label>
+    <div class="row">
+      <label>Price now<input id="sePrice" type="number" min="0" step="0.01" inputmode="decimal"></label>
+      <label>Original price<input id="seOrig" type="number" min="0" step="0.01" inputmode="decimal"></label>
+    </div>
+    <div class="row">
+      <label>Rating (0–5)<input id="seRating" type="number" min="0" max="5" step="0.1" inputmode="decimal"></label>
+      <label>No. of reviews<input id="seReviews" type="number" min="0" inputmode="numeric"></label>
+    </div>
+    <div class="row">
+      <label>Store
+        <select id="seStore" class="sel">
+          <option value="">Unknown</option><option value="mall">Shopee Mall</option>
+          <option value="preferred">Preferred / Star+</option><option value="regular">Regular seller</option>
+        </select>
+      </label>
+      <label>Qty<input id="seQty" type="number" min="1" inputmode="numeric"></label>
+    </div>
+    <div class="row">
+      <label>Target sale<select id="seSale" class="sel"></select></label>
+      <label>Stage
+        <select id="seStage" class="sel">
+          <option value="new">To check</option><option value="checked">Checked</option><option value="cart">In cart</option>
+        </select>
+      </label>
+    </div>
+    <label>Vouchers / discounts<input id="seVoucher" placeholder="e.g. ₱50 off ₱500 min, free shipping"></label>
+    <label>Note (variant, size, color…)<input id="seNote"></label>
+    <div class="row">
+      <button value="cancel" type="button" id="seCancel" class="btn">Cancel</button>
+      <button value="save" class="btn primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="codeDlg">
   <form method="dialog" id="codeForm">
     <h3>Which list?</h3>
@@ -108,5 +180,6 @@
 
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script src="shopee.js"></script>
 </body>
 </html>
