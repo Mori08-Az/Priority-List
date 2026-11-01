@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6feb">
+<title>Priority Lost</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Priority Lost</h1>
+    <div class="head-right">
+      <span id="sync" class="pill" title="Sync status">…</span>
+      <select id="who" aria-label="Who is using this device"></select>
+    </div>
+  </header>
+
+  <p id="summary" class="summary"></p>
+
+  <form id="addForm" class="card add">
+    <input id="name" placeholder="What do you need to buy?" autocomplete="off" required>
+    <div class="row">
+      <input id="qty" type="number" min="1" placeholder="Qty" inputmode="numeric">
+      <input id="price" type="number" min="0" step="0.01" placeholder="Est. price" inputmode="decimal">
+    </div>
+    <input id="note" placeholder="Note / where to buy (optional)" autocomplete="off">
+    <div class="row">
+      <button type="submit" class="primary">Add to bottom</button>
+      <button type="button" id="addTop">Add as #1</button>
+    </div>
+  </form>
+
+  <section>
+    <h2>To buy <small>(top = most important)</small></h2>
+    <ol id="list" class="list"></ol>
+    <p id="empty" class="muted" hidden>Nothing on the list. Nice. 🎉</p>
+  </section>
+
+  <section>
+    <details id="historyBox">
+      <summary>Bought <span id="boughtCount"></span></summary>
+      <ul id="history" class="list"></ul>
+      <button id="clearHistory" class="link danger" hidden>Clear bought history</button>
+    </details>
+  </section>
+
+  <footer class="muted">
+    <span id="listCode"></span>
+    <button id="switchList" class="link">Change list code</button>
+  </footer>
+</main>
+
+<dialog id="editDlg">
+  <form method="dialog" id="editForm">
+    <h3>Edit item</h3>
+    <input id="eName" required>
+    <div class="row">
+      <input id="eQty" type="number" min="1" placeholder="Qty">
+      <input id="ePrice" type="number" min="0" step="0.01" placeholder="Est. price">
+    </div>
+    <input id="eNote" placeholder="Note">
+    <div class="row">
+      <button value="cancel" type="button" id="eCancel">Cancel</button>
+      <button value="save" class="primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
