@@ -47,14 +47,6 @@
   const disc = i => (i.price && i.orig && i.orig > i.price) ? Math.round((1 - i.price / i.orig) * 100) : 0;
   const extraOff = i => Math.min(+i.extra || 0, +i.price || 0);
   const finalPrice = i => (+i.price || 0) - extraOff(i);
-  // JD's three checks: 1 = pass, 0 = fail, null = not checked yet
-  function checks(i) {
-    const reviews = !hasNum(i.rating) ? null : (i.rating >= 4.7 && !(hasNum(i.reviews) && i.reviews < 50)) ? 1 : 0;
-    const legit = !i.store ? null : (i.store === 'mall' || i.store === 'preferred') ? 1 : 0;
-    const deal = disc(i) > 0 || extraOff(i) > 0 || (i.voucher || '').trim() ? 1 : (i.price ? 0 : null);
-    return { reviews, legit, deal };
-  }
-  const chk = (v, yes, no, ask) => `<span class="chk ${v === 1 ? 'y' : v === 0 ? 'n' : ''}">${v === 1 ? '✓ ' + yes : v === 0 ? '✗ ' + no : '? ' + ask}</span>`;
   // hide generic Shopee logos/placeholders: on Shopee hosts a product photo always lives under /file/<hash>
   const goodImg = u => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) && (!/shopee|susercontent/i.test(x.hostname) || /\/file\/[\w-]+/.test(x.pathname)); } catch { return false; } };
   const picSrc = i => i.img || (goodImg(i.imgUrl || '') ? i.imgUrl : '');
@@ -217,24 +209,22 @@
       filter === 'all' || (filter.startsWith('sale:') ? it.sale === filter.slice(5) : (it.stage || 'new') === filter));
     $('#sEmpty').hidden = shown.length > 0;
     $('#sList').innerHTML = shown.map(({ it, n }) => {
-      const c = checks(it), ready = c.reviews === 1 && c.legit === 1 && c.deal === 1, d = disc(it), st = it.stage || 'new', pic = picSrc(it), ex = extraOff(it);
+      const d = disc(it), st = it.stage || 'new', pic = picSrc(it), ex = extraOff(it);
       return `<li class="item${n === 0 ? ' next' : ''}" data-id="${it.id}">
         <div class="rank">${n + 1}</div>
         <div>
           <a class="prod" href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener" title="Open on Shopee">
             ${pic ? `<img class="thumb" src="${esc(pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
             <div>
-              <div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}${ready ? '<span class="ready">Ready</span>' : ''}</div>
+              <div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}</div>
               <div class="price">${it.price ? peso(it.price) : '<span class="muted">no price yet</span>'}${d ? `<s>${peso(it.orig)}</s><em>-${d}%</em>` : ''}${ex ? `<span class="final">→ ${peso(finalPrice(it))} after vouchers</span>` : ''}</div>
             </div>
           </a>
-          <div class="checks">${chk(c.reviews, 'Good reviews', 'Weak reviews', 'Reviews?')}${chk(c.legit, 'Legit store', 'Not Mall/Preferred', 'Store?')}${chk(c.deal, 'Has discount', 'No discount', 'Discount?')}</div>
-          <div class="tags">
-            <span class="tag2 ${hasNum(it.rating) ? (it.rating >= 4.7 ? 'good' : it.rating >= 4.4 ? 'warn' : 'bad') : ''}">${hasNum(it.rating) ? '★ ' + it.rating + (hasNum(it.reviews) ? ` (${Number(it.reviews).toLocaleString()})` : '') : '★ not checked'}</span>
-            <span class="tag2 ${it.store === 'mall' || it.store === 'preferred' ? 'good' : it.store === 'regular' ? 'warn' : ''}">${STORE[it.store || '']}</span>
+          ${hasNum(it.rating) || it.store || it.sale ? `<div class="tags">
+            ${hasNum(it.rating) ? `<span class="tag2 ${it.rating >= 4.7 ? 'good' : it.rating >= 4.4 ? 'warn' : 'bad'}">★ ${it.rating}${hasNum(it.reviews) ? ` (${Number(it.reviews).toLocaleString()})` : ''}</span>` : ''}
+            ${it.store ? `<span class="tag2 ${it.store === 'regular' ? 'warn' : 'good'}">${STORE[it.store]}</span>` : ''}
             ${it.sale ? `<span class="tag2">🎯 ${esc(it.sale)}</span>` : ''}
-            <span class="tag2">${STAGES[st]}</span>
-          </div>
+          </div>` : ''}
           ${it.voucher ? `<div class="note">🎟 ${esc(it.voucher)}</div>` : ''}
           ${it.note ? `<div class="note">${esc(it.note)}</div>` : ''}
           <div class="meta">${avatar(it.addedBy)}<span>· Added ${fmtDate(it.addedAt)} (${ago(it.addedAt)})</span></div>
