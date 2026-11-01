@@ -7,7 +7,6 @@
   const NEXT = { new: 'Mark checked', checked: 'Put in cart', cart: 'Bought' };
   const NEXT_KEY = { new: 'checked', checked: 'cart' };
   const PREV_KEY = { checked: 'new', cart: 'checked' };
-  const STORE = { mall: 'Shopee Mall', preferred: 'Preferred', regular: 'Regular seller', '': 'Store ?' };
   let filter = 'all', editingId = null, pendingImg;
   const list = () => state.shopee || [];
   const mut = fn => mutate(s => { s.shopee = s.shopee || []; fn(s.shopee); });
@@ -80,7 +79,7 @@
       const r = await fetch('/.netlify/functions/shopee-info?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(15000) });
       if (!r.ok || !/json/.test(r.headers.get('content-type') || '')) return null;
       const d = await r.json();
-      return (d.name || d.image || d.price || d.rating) ? d : null;
+      return (d.name || d.image || d.price) ? d : null;
     } catch { return null; }
   }
   async function autofill(items) {
@@ -95,8 +94,6 @@
           if (d.name && (!x.name || x.name === DEFAULT_NAME)) x.name = d.name;
           if (d.image && !x.img && (!x.imgUrl || !goodImg(x.imgUrl))) x.imgUrl = d.image;
           if (d.price && !x.price) x.price = d.price;
-          if (d.rating && !hasNum(x.rating)) x.rating = d.rating;
-          if (hasNum(d.reviews) && !hasNum(x.reviews) && d.rating) x.reviews = d.reviews;
           if (d.shopId && !x.shopId) { x.shopId = d.shopId; x.itemId = d.itemId; }
         });
       }
@@ -113,7 +110,7 @@
       const p = parse(sh.url);
       const old = list().find(i => i.url === sh.url || (p.itemId && i.itemId === p.itemId && i.shopId === p.shopId));
       if (old) { if (sh.name || sh.price) updates.push({ id: old.id, sh }); continue; }
-      fresh.push({ id: uid(), url: sh.url, ...p, name: sh.name || p.name, sale, stage: 'new', qty: 1, price: sh.price || 0, orig: sh.orig || 0, extra: 0, img: '', imgUrl: '', rating: '', reviews: '', store: '', voucher: '', note: '', addedBy: me, addedAt: new Date().toISOString() });
+      fresh.push({ id: uid(), url: sh.url, ...p, name: sh.name || p.name, sale, stage: 'new', qty: 1, price: sh.price || 0, orig: sh.orig || 0, extra: 0, img: '', imgUrl: '', voucher: '', note: '', addedBy: me, addedAt: new Date().toISOString() });
     }
     if (updates.length) mut(arr => updates.forEach(({ id, sh }) => {
       const x = arr.find(i => i.id === id); if (!x) return;
@@ -155,10 +152,10 @@
     const it = list().find(i => i.id === id); if (!it) return;
     editingId = id;
     const set = (k, v) => { $('#se' + k).value = v ?? ''; };
-    set('Name', it.name === DEFAULT_NAME ? '' : it.name); set('Url', it.url); set('Store', it.store); set('Sale', it.sale); set('Stage', it.stage || 'new');
+    set('Name', it.name === DEFAULT_NAME ? '' : it.name); set('Url', it.url); set('Sale', it.sale); set('Stage', it.stage || 'new');
     set('Voucher', it.voucher); set('Note', it.note);
-    set('Price', it.price || ''); set('Orig', it.orig || ''); set('Rating', hasNum(it.rating) ? it.rating : '');
-    set('Reviews', hasNum(it.reviews) ? it.reviews : ''); set('Qty', it.qty || 1);
+    set('Price', it.price || ''); set('Orig', it.orig || '');
+    set('Qty', it.qty || 1);
     set('Extra', it.extra || ''); set('Img', it.imgUrl || ''); pendingImg = undefined; showPreview(it.img || '');
     $('#sEditDlg').showModal();
   }
@@ -220,11 +217,7 @@
               <div class="price">${it.price ? peso(it.price) : '<span class="muted">no price yet</span>'}${d ? `<s>${peso(it.orig)}</s><em>-${d}%</em>` : ''}${ex ? `<span class="final">→ ${peso(finalPrice(it))} after vouchers</span>` : ''}</div>
             </div>
           </a>
-          ${hasNum(it.rating) || it.store || it.sale ? `<div class="tags">
-            ${hasNum(it.rating) ? `<span class="tag2 ${it.rating >= 4.7 ? 'good' : it.rating >= 4.4 ? 'warn' : 'bad'}">★ ${it.rating}${hasNum(it.reviews) ? ` (${Number(it.reviews).toLocaleString()})` : ''}</span>` : ''}
-            ${it.store ? `<span class="tag2 ${it.store === 'regular' ? 'warn' : 'good'}">${STORE[it.store]}</span>` : ''}
-            ${it.sale ? `<span class="tag2">🎯 ${esc(it.sale)}</span>` : ''}
-          </div>` : ''}
+          ${it.sale ? `<div class="tags"><span class="tag2">🎯 ${esc(it.sale)}</span></div>` : ''}
           ${it.voucher ? `<div class="note">🎟 ${esc(it.voucher)}</div>` : ''}
           ${it.note ? `<div class="note">${esc(it.note)}</div>` : ''}
           <div class="meta">${avatar(it.addedBy)}<span>· Added ${fmtDate(it.addedAt)} (${ago(it.addedAt)})</span></div>
@@ -263,8 +256,7 @@
   $('#sEditForm').addEventListener('submit', e => {
     if (!(e.submitter && e.submitter.value === 'save')) return;
     const num = id => $(id).value === '' ? '' : +$(id).value, v = id => $(id).value.trim();
-    const vals = { name: v('#seName'), url: v('#seUrl'), price: +$('#sePrice').value || 0, orig: +$('#seOrig').value || 0, rating: num('#seRating'), reviews: num('#seReviews'),
-      qty: +$('#seQty').value || 1, extra: +$('#seExtra').value || 0, imgUrl: v('#seImg'), store: $('#seStore').value, sale: $('#seSale').value, stage: $('#seStage').value, voucher: v('#seVoucher'), note: v('#seNote') };
+    const vals = { name: v('#seName'), url: v('#seUrl'), price: +$('#sePrice').value || 0, orig: +$('#seOrig').value || 0, qty: +$('#seQty').value || 1, extra: +$('#seExtra').value || 0, imgUrl: v('#seImg'), sale: $('#seSale').value, stage: $('#seStage').value, voucher: v('#seVoucher'), note: v('#seNote') };
     const img = pendingImg;
     mut(arr => { const it = arr.find(i => i.id === editingId); if (!it) return; Object.assign(it, vals, { name: vals.name || it.name, url: vals.url || it.url }); if (img !== undefined) it.img = img; });
     if (img && sizeKB() > 700) toast('List is getting big — use image links instead of photos for new items');
@@ -278,8 +270,6 @@
     if (d.name && (!$('#seName').value.trim() || $('#seName').value === DEFAULT_NAME)) $('#seName').value = d.name;
     if (!$('#seImg').value && !$('#sePreview').src.startsWith('data:')) set('#seImg', d.image);
     if (!$('#sePrice').value) set('#sePrice', d.price);
-    if (!$('#seRating').value) set('#seRating', d.rating);
-    if (!$('#seReviews').value && d.rating) set('#seReviews', d.reviews);
     toast('Filled in what was found — tap Save');
   });
   $('#seCancel').addEventListener('click', () => $('#sEditDlg').close());
