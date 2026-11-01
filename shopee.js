@@ -160,13 +160,13 @@
       return `<li class="item${n === 0 ? ' next' : ''}" data-id="${it.id}">
         <div class="rank">${n + 1}</div>
         <div>
-          <div class="prod">
+          <a class="prod" href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener" title="Open on Shopee">
             ${pic ? `<img class="thumb" src="${esc(pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
             <div>
               <div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}${ready ? '<span class="ready">Ready</span>' : ''}</div>
               <div class="price">${it.price ? peso(it.price) : '<span class="muted">no price yet</span>'}${d ? `<s>${peso(it.orig)}</s><em>-${d}%</em>` : ''}${ex ? `<span class="final">→ ${peso(finalPrice(it))} after vouchers</span>` : ''}</div>
             </div>
-          </div>
+          </a>
           <div class="checks">${chk(c.reviews, 'Good reviews', 'Weak reviews', 'Reviews?')}${chk(c.legit, 'Legit store', 'Not Mall/Preferred', 'Store?')}${chk(c.deal, 'Has discount', 'No discount', 'Discount?')}</div>
           <div class="tags">
             <span class="tag2 ${hasNum(it.rating) ? (it.rating >= 4.7 ? 'good' : it.rating >= 4.4 ? 'warn' : 'bad') : ''}">${hasNum(it.rating) ? '★ ' + it.rating + (hasNum(it.reviews) ? ` (${Number(it.reviews).toLocaleString()})` : '') : '★ not checked'}</span>
