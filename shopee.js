@@ -61,6 +61,25 @@
   const safeUrl = u => /^https?:\/\//i.test(u) ? u : '#';
   const ib = (a, label, n, dis) => `<button class="icon" data-sa="${a}" aria-label="${label}" title="${label}"${dis ? ' disabled' : ''}>${svg(n)}</button>`;
 
+  /* Shopee's "More → Copy" message: "Check out <name> at 68% off! ₱109 only. Get it on Shopee now! <link>" */
+  const LINK_RE = /https?:\/\/(?:[\w-]+\.)?(?:shopee\.[a-z.]+|shope\.ee|shp\.ee)\/[^\s<>"')]+/gi;
+  function parseShares(text) {
+    const out = [], seen = new Set(); let prev = 0, m;
+    LINK_RE.lastIndex = 0;
+    while ((m = LINK_RE.exec(text))) {
+      const url = m[0].replace(/[.,;]+$/, ''), seg = text.slice(prev, m.index); prev = m.index + m[0].length;
+      if (seen.has(url)) continue; seen.add(url);
+      const info = { url };
+      const a = seg.match(/Check out\s+([\s\S]+?)\s+at\s+(\d+)%\s*off/i), b = a || seg.match(/Check out\s+([\s\S]+?)\s*!/i);
+      if (b) info.name = b[1].replace(/\s+/g, ' ').trim();
+      if (a) info.pct = +a[2];
+      const pr = seg.match(/₱\s?([\d,]+(?:\.\d+)?)/); if (pr) info.price = +pr[1].replace(/,/g, '');
+      if (info.price && info.pct > 0 && info.pct < 95) info.orig = Math.round(info.price / (1 - info.pct / 100));
+      out.push(info);
+    }
+    return out;
+  }
+
   /* automatic lookup (Netlify function; best effort — Shopee may block it) */
   const DEFAULT_NAME = 'Shopee item (tap Edit to name it)';
   async function lookup(url) {
@@ -95,23 +114,29 @@
 
   /* actions */
   function add(top) {
-    const links = extract($('#sPaste').value);
-    if (!links.length) { toast('No Shopee links found'); return; }
-    const sale = $('#sAddSale').value, fresh = [];
-    for (const url of links) {
-      const p = parse(url);
-      if (list().some(i => i.url === url || (p.itemId && i.itemId === p.itemId && i.shopId === p.shopId))) continue;
-      fresh.push({ id: uid(), url, ...p, sale, stage: 'new', qty: 1, price: 0, orig: 0, extra: 0, img: '', imgUrl: '', rating: '', reviews: '', store: '', voucher: '', note: '', addedBy: me, addedAt: new Date().toISOString() });
+    const shares = parseShares($('#sPaste').value);
+    if (!shares.length) { toast('No Shopee links found'); return; }
+    const sale = $('#sAddSale').value, fresh = [], updates = [];
+    for (const sh of shares) {
+      const p = parse(sh.url);
+      const old = list().find(i => i.url === sh.url || (p.itemId && i.itemId === p.itemId && i.shopId === p.shopId));
+      if (old) { if (sh.name || sh.price) updates.push({ id: old.id, sh }); continue; }
+      fresh.push({ id: uid(), url: sh.url, ...p, name: sh.name || p.name, sale, stage: 'new', qty: 1, price: sh.price || 0, orig: sh.orig || 0, extra: 0, img: '', imgUrl: '', rating: '', reviews: '', store: '', voucher: '', note: '', addedBy: me, addedAt: new Date().toISOString() });
     }
-    if (!fresh.length) { toast('Already on the list'); return; }
-    const skipped = links.length - fresh.length;
+    if (updates.length) mut(arr => updates.forEach(({ id, sh }) => {
+      const x = arr.find(i => i.id === id); if (!x) return;
+      if (sh.name && (!x.name || x.name === DEFAULT_NAME)) x.name = sh.name;
+      if (sh.price && !x.price) { x.price = sh.price; if (sh.orig && !x.orig) x.orig = sh.orig; }
+    }));
+    if (!fresh.length && !updates.length) { toast('Already on the list'); return; }
+    const skipped = shares.length - fresh.length - updates.length;
     mut(arr => {
       if (top) { const f = arr.findIndex(i => !i.boughtAt); arr.splice(f < 0 ? arr.length : f, 0, ...fresh); }
       else arr.push(...fresh);
     });
     $('#sAddForm').reset();
-    autofill(fresh);
-    toast(`Added ${fresh.length}${skipped ? ` · ${skipped} duplicate skipped` : ''}`);
+    if (fresh.length) autofill(fresh.filter(i => i.name === DEFAULT_NAME));
+    toast(`${fresh.length ? 'Added ' + fresh.length : ''}${fresh.length && updates.length ? ' · ' : ''}${updates.length ? 'Updated ' + updates.length : ''}${skipped ? ` · ${skipped} duplicate skipped` : ''}`);
   }
   function move(id, dir) {
     mut(arr => {
