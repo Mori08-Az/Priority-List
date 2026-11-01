@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f6feb">
+<meta name="theme-color" content="#5b5bd6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Priorities">
 <title>Priority Lost</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -12,46 +14,68 @@
 </head>
 <body>
 <main>
-  <header>
-    <h1>Priority Lost</h1>
-    <div class="head-right">
+  <header class="hero">
+    <div class="hero-top">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#fff" fill-opacity=".2"/><rect x="7" y="9" width="18" height="3.4" rx="1.7" fill="#fff"/><rect x="7" y="14.3" width="13" height="3.4" rx="1.7" fill="#fff" fill-opacity=".8"/><rect x="7" y="19.6" width="8" height="3.4" rx="1.7" fill="#fff" fill-opacity=".6"/></svg>
+        <div>
+          <h1>Priority Lost</h1>
+          <p class="tag">Most important first.</p>
+        </div>
+      </div>
       <span id="sync" class="pill" title="Sync status">…</span>
-      <select id="who" aria-label="Who is using this device"></select>
+    </div>
+    <div class="hero-bottom">
+      <div id="summary" class="stats"></div>
+      <label class="who-wrap">
+        <span class="who-label">Using as</span>
+        <select id="who" aria-label="Who is using this device"></select>
+      </label>
     </div>
   </header>
 
-  <p id="summary" class="summary"></p>
-
   <form id="addForm" class="card add">
-    <input id="name" placeholder="What do you need to buy?" autocomplete="off" required>
-    <div class="row">
-      <input id="qty" type="number" min="1" placeholder="Qty" inputmode="numeric">
-      <input id="price" type="number" min="0" step="0.01" placeholder="Est. price" inputmode="decimal">
+    <div class="add-main">
+      <input id="name" placeholder="Add something to buy…" autocomplete="off" required>
     </div>
-    <input id="note" placeholder="Note / where to buy (optional)" autocomplete="off">
+    <details class="more">
+      <summary>Add details</summary>
+      <div class="row">
+        <input id="qty" type="number" min="1" placeholder="Qty" inputmode="numeric">
+        <input id="price" type="number" min="0" step="0.01" placeholder="Est. price" inputmode="decimal">
+      </div>
+      <input id="note" placeholder="Note / where to buy" autocomplete="off">
+    </details>
     <div class="row">
-      <button type="submit" class="primary">Add to bottom</button>
-      <button type="button" id="addTop">Add as #1</button>
+      <button type="submit" class="btn primary">Add to bottom</button>
+      <button type="button" id="addTop" class="btn">Add as #1</button>
     </div>
   </form>
 
   <section>
-    <h2>To buy <small>(top = most important)</small></h2>
+    <h2>To buy</h2>
     <ol id="list" class="list"></ol>
-    <p id="empty" class="muted" hidden>Nothing on the list. Nice. 🎉</p>
+    <div id="empty" class="empty" hidden>
+      <div class="empty-icon">✓</div>
+      <p>All caught up.</p>
+      <small>Add the next thing you need above.</small>
+    </div>
   </section>
 
   <section>
-    <details id="historyBox">
+    <details id="historyBox" class="history">
       <summary>Bought <span id="boughtCount"></span></summary>
       <ul id="history" class="list"></ul>
       <button id="clearHistory" class="link danger" hidden>Clear bought history</button>
     </details>
   </section>
 
-  <footer class="muted">
-    <span id="listCode"></span>
-    <button id="switchList" class="link">Change list code</button>
+  <footer>
+    <div id="listCode"></div>
+    <div class="foot-actions">
+      <button id="invite" class="link">Copy invite link</button>
+      <button id="switchList" class="link">Change list code</button>
+    </div>
   </footer>
 </main>
 
@@ -65,9 +89,18 @@
     </div>
     <input id="eNote" placeholder="Note">
     <div class="row">
-      <button value="cancel" type="button" id="eCancel">Cancel</button>
-      <button value="save" class="primary">Save</button>
+      <button value="cancel" type="button" id="eCancel" class="btn">Cancel</button>
+      <button value="save" class="btn primary">Save</button>
     </div>
+  </form>
+</dialog>
+
+<dialog id="codeDlg">
+  <form method="dialog" id="codeForm">
+    <h3>Which list?</h3>
+    <p class="muted" id="codeHelp">Everyone who types the same code sees the same list.</p>
+    <input id="codeInput" placeholder="list code" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+    <button class="btn primary">Open list</button>
   </form>
 </dialog>
 
