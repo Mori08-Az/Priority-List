@@ -158,7 +158,16 @@
         </select>
       </label>
     </div>
-    <label>Vouchers / discounts<input id="seVoucher" placeholder="e.g. ₱50 off ₱500 min, free shipping"></label>
+    <label>Extra discount (₱ off from vouchers / coins)<input id="seExtra" type="number" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 50"></label>
+    <label>Voucher details<input id="seVoucher" placeholder="e.g. ₱50 off ₱500 min, free shipping"></label>
+    <div class="photo-row">
+      <img id="sePreview" class="thumb" alt="" hidden>
+      <div class="photo-btns">
+        <label class="btn photo-pick">📷 Add photo / screenshot<input id="sePhoto" type="file" accept="image/*" hidden></label>
+        <button type="button" id="sePhotoClear" class="link danger" hidden>Remove photo</button>
+      </div>
+    </div>
+    <label>…or image link (long-press the photo on Shopee → copy image address)<input id="seImg" inputmode="url" placeholder="https://…"></label>
     <label>Note (variant, size, color…)<input id="seNote"></label>
     <div class="row">
       <button value="cancel" type="button" id="seCancel" class="btn">Cancel</button>

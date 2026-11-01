@@ -7,7 +7,7 @@
   const NEXT = { new: 'Mark checked', checked: 'Put in cart', cart: 'Bought' };
   const NEXT_KEY = { new: 'checked', checked: 'cart' };
   const STORE = { mall: 'Shopee Mall', preferred: 'Preferred', regular: 'Regular seller', '': 'Store ?' };
-  let filter = 'all', editingId = null;
+  let filter = 'all', editingId = null, pendingImg;
   const list = () => state.shopee || [];
   const mut = fn => mutate(s => { s.shopee = s.shopee || []; fn(s.shopee); });
 
@@ -43,13 +43,18 @@
     } catch {}
     return { name: name.trim() || 'Shopee item (tap Edit to name it)', shopId, itemId };
   }
-  function verdict(i) {
-    if (!hasNum(i.rating)) return null;
-    if (i.rating < 4.4 || (hasNum(i.reviews) && i.reviews < 10)) return ['Risky', 'bad'];
-    if (i.rating >= 4.7 && !(hasNum(i.reviews) && i.reviews < 50) && (i.store === 'mall' || i.store === 'preferred')) return ['Looks good', 'good'];
-    return ['Check closer', 'warn'];
-  }
   const disc = i => (i.price && i.orig && i.orig > i.price) ? Math.round((1 - i.price / i.orig) * 100) : 0;
+  const extraOff = i => Math.min(+i.extra || 0, +i.price || 0);
+  const finalPrice = i => (+i.price || 0) - extraOff(i);
+  // JD's three checks: 1 = pass, 0 = fail, null = not checked yet
+  function checks(i) {
+    const reviews = !hasNum(i.rating) ? null : (i.rating >= 4.7 && !(hasNum(i.reviews) && i.reviews < 50)) ? 1 : 0;
+    const legit = !i.store ? null : (i.store === 'mall' || i.store === 'preferred') ? 1 : 0;
+    const deal = disc(i) > 0 || extraOff(i) > 0 || (i.voucher || '').trim() ? 1 : (i.price ? 0 : null);
+    return { reviews, legit, deal };
+  }
+  const chk = (v, yes, no, ask) => `<span class="chk ${v === 1 ? 'y' : v === 0 ? 'n' : ''}">${v === 1 ? '✓ ' + yes : v === 0 ? '✗ ' + no : '? ' + ask}</span>`;
+  const picSrc = i => i.img || (/^https?:\/\//i.test(i.imgUrl || '') ? i.imgUrl : '');
   const safeUrl = u => /^https?:\/\//i.test(u) ? u : '#';
   const ib = (a, label, n, dis) => `<button class="icon" data-sa="${a}" aria-label="${label}" title="${label}"${dis ? ' disabled' : ''}>${svg(n)}</button>`;
 
@@ -61,7 +66,7 @@
     for (const url of links) {
       const p = parse(url);
       if (list().some(i => i.url === url || (p.itemId && i.itemId === p.itemId && i.shopId === p.shopId))) continue;
-      fresh.push({ id: uid(), url, ...p, sale, stage: 'new', qty: 1, price: 0, orig: 0, rating: '', reviews: '', store: '', voucher: '', note: '', addedBy: me, addedAt: new Date().toISOString() });
+      fresh.push({ id: uid(), url, ...p, sale, stage: 'new', qty: 1, price: 0, orig: 0, extra: 0, img: '', imgUrl: '', rating: '', reviews: '', store: '', voucher: '', note: '', addedBy: me, addedAt: new Date().toISOString() });
     }
     if (!fresh.length) { toast('Already on the list'); return; }
     const skipped = links.length - fresh.length;
@@ -101,14 +106,41 @@
     set('Voucher', it.voucher); set('Note', it.note);
     set('Price', it.price || ''); set('Orig', it.orig || ''); set('Rating', hasNum(it.rating) ? it.rating : '');
     set('Reviews', hasNum(it.reviews) ? it.reviews : ''); set('Qty', it.qty || 1);
+    set('Extra', it.extra || ''); set('Img', it.imgUrl || ''); pendingImg = undefined; showPreview(it.img || '');
     $('#sEditDlg').showModal();
   }
+
+  /* photo: resized to a small square thumbnail and stored inline (keeps the shared document small) */
+  function showPreview(src) {
+    const p = $('#sePreview'); p.hidden = !src; if (src) p.src = src; else p.removeAttribute('src');
+    $('#sePhotoClear').hidden = !src;
+  }
+  function toThumb(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file), im = new Image();
+      im.onload = () => {
+        const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
+        const m = Math.min(im.width, im.height), sx = (im.width - m) / 2, sy = (im.height - m) / 2;
+        c.getContext('2d').drawImage(im, sx, sy, m, m, 0, 0, S, S);
+        URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.6));
+      };
+      im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('bad image')); };
+      im.src = url;
+    });
+  }
+  $('#sePhoto').addEventListener('change', async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try { pendingImg = await toThumb(f); showPreview(pendingImg); } catch { toast('Could not read that image'); }
+    e.target.value = '';
+  });
+  $('#sePhotoClear').addEventListener('click', () => { pendingImg = ''; showPreview(''); });
+  const sizeKB = () => Math.round(JSON.stringify({ items: state.items, shopee: state.shopee, people: state.people }).length / 1024);
 
   /* render */
   function render() {
     const arr = list(), act = arr.filter(i => !i.boughtAt);
     const done = arr.filter(i => i.boughtAt).sort((a, b) => b.boughtAt.localeCompare(a.boughtAt));
-    const sum = a => a.reduce((t, i) => t + (i.price || 0) * (i.qty || 1), 0);
+    const sum = a => a.reduce((t, i) => t + finalPrice(i) * (i.qty || 1), 0);
     const cart = act.filter(i => i.stage === 'cart'), toCheck = act.filter(i => (i.stage || 'new') === 'new').length;
     const nx = sales()[0], days = nx ? Math.ceil((nx.date - new Date()) / 864e5) : 0;
     $('#sSale').textContent = nx ? (days <= 0 ? `🎉 ${nx.key} sale is today` : `🎯 ${nx.key} sale in ${days} day${days > 1 ? 's' : ''}`) : '';
@@ -124,16 +156,21 @@
       filter === 'all' || (filter.startsWith('sale:') ? it.sale === filter.slice(5) : (it.stage || 'new') === filter));
     $('#sEmpty').hidden = shown.length > 0;
     $('#sList').innerHTML = shown.map(({ it, n }) => {
-      const v = verdict(it), d = disc(it), st = it.stage || 'new';
+      const c = checks(it), ready = c.reviews === 1 && c.legit === 1 && c.deal === 1, d = disc(it), st = it.stage || 'new', pic = picSrc(it), ex = extraOff(it);
       return `<li class="item${n === 0 ? ' next' : ''}" data-id="${it.id}">
         <div class="rank">${n + 1}</div>
         <div>
-          <div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}</div>
-          <div class="price">${it.price ? peso(it.price) : '<span class="muted">no price yet</span>'}${d ? `<s>${peso(it.orig)}</s><em>-${d}%</em>` : ''}</div>
+          <div class="prod">
+            ${pic ? `<img class="thumb" src="${esc(pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
+            <div>
+              <div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}${ready ? '<span class="ready">Ready</span>' : ''}</div>
+              <div class="price">${it.price ? peso(it.price) : '<span class="muted">no price yet</span>'}${d ? `<s>${peso(it.orig)}</s><em>-${d}%</em>` : ''}${ex ? `<span class="final">→ ${peso(finalPrice(it))} after vouchers</span>` : ''}</div>
+            </div>
+          </div>
+          <div class="checks">${chk(c.reviews, 'Good reviews', 'Weak reviews', 'Reviews?')}${chk(c.legit, 'Legit store', 'Not Mall/Preferred', 'Store?')}${chk(c.deal, 'Has discount', 'No discount', 'Discount?')}</div>
           <div class="tags">
             <span class="tag2 ${hasNum(it.rating) ? (it.rating >= 4.7 ? 'good' : it.rating >= 4.4 ? 'warn' : 'bad') : ''}">${hasNum(it.rating) ? '★ ' + it.rating + (hasNum(it.reviews) ? ` (${Number(it.reviews).toLocaleString()})` : '') : '★ not checked'}</span>
             <span class="tag2 ${it.store === 'mall' || it.store === 'preferred' ? 'good' : it.store === 'regular' ? 'warn' : ''}">${STORE[it.store || '']}</span>
-            ${v ? `<span class="tag2 ${v[1]}">${v[0]}</span>` : ''}
             ${it.sale ? `<span class="tag2">🎯 ${esc(it.sale)}</span>` : ''}
             <span class="tag2">${STAGES[st]}</span>
           </div>
@@ -153,7 +190,7 @@
     $('#sHistory').innerHTML = done.map(it => `<li class="item done" data-id="${it.id}">
       <div class="rank">${svg('check').replace('<svg', '<svg width="18" height="18" style="fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round"')}</div>
       <div><div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}</div>
-        <div class="meta">${it.price ? peso(it.price) + ' · ' : ''}Bought ${fmtDate(it.boughtAt)}${it.boughtBy ? ' · ' + avatar(it.boughtBy) : ''}</div></div>
+        <div class="meta">${it.price ? peso(finalPrice(it)) + ' · ' : ''}Bought ${fmtDate(it.boughtAt)}${it.boughtBy ? ' · ' + avatar(it.boughtBy) : ''}</div></div>
       <div class="actions"><button class="restore" data-sa="restore">↩ Back to list</button>${ib('del', 'Delete', 'trash')}</div></li>`).join('');
   }
   window.renderShopee = render;
@@ -175,12 +212,14 @@
     if (!(e.submitter && e.submitter.value === 'save')) return;
     const num = id => $(id).value === '' ? '' : +$(id).value, v = id => $(id).value.trim();
     const vals = { name: v('#seName'), url: v('#seUrl'), price: +$('#sePrice').value || 0, orig: +$('#seOrig').value || 0, rating: num('#seRating'), reviews: num('#seReviews'),
-      qty: +$('#seQty').value || 1, store: $('#seStore').value, sale: $('#seSale').value, stage: $('#seStage').value, voucher: v('#seVoucher'), note: v('#seNote') };
-    mut(arr => { const it = arr.find(i => i.id === editingId); if (!it) return; Object.assign(it, vals, { name: vals.name || it.name, url: vals.url || it.url }); });
+      qty: +$('#seQty').value || 1, extra: +$('#seExtra').value || 0, imgUrl: v('#seImg'), store: $('#seStore').value, sale: $('#seSale').value, stage: $('#seStage').value, voucher: v('#seVoucher'), note: v('#seNote') };
+    const img = pendingImg;
+    mut(arr => { const it = arr.find(i => i.id === editingId); if (!it) return; Object.assign(it, vals, { name: vals.name || it.name, url: vals.url || it.url }); if (img !== undefined) it.img = img; });
+    if (img && sizeKB() > 700) toast('List is getting big — use image links instead of photos for new items');
   });
   $('#seCancel').addEventListener('click', () => $('#sEditDlg').close());
   $('#sCopyCart').addEventListener('click', () => {
-    const text = list().filter(i => !i.boughtAt && i.stage === 'cart').map(i => `• ${i.name}${i.qty > 1 ? ' ×' + i.qty : ''} — ${i.price ? peso(i.price) : '?'}\n  ${i.url}`).join('\n') || '(nothing in cart yet)';
+    const text = list().filter(i => !i.boughtAt && i.stage === 'cart').map(i => `• ${i.name}${i.qty > 1 ? ' ×' + i.qty : ''} — ${i.price ? peso(finalPrice(i)) : '?'}\n  ${i.url}`).join('\n') || '(nothing in cart yet)';
     (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Cart list copied'), () => prompt('Copy this:', text));
   });
 
