@@ -138,7 +138,7 @@
     const it = list().find(i => i.id === id); if (!it) return;
     editingId = id;
     const set = (k, v) => { $('#se' + k).value = v ?? ''; };
-    set('Name', it.name); set('Url', it.url); set('Store', it.store); set('Sale', it.sale); set('Stage', it.stage || 'new');
+    set('Name', it.name === DEFAULT_NAME ? '' : it.name); set('Url', it.url); set('Store', it.store); set('Sale', it.sale); set('Stage', it.stage || 'new');
     set('Voucher', it.voucher); set('Note', it.note);
     set('Price', it.price || ''); set('Orig', it.orig || ''); set('Rating', hasNum(it.rating) ? it.rating : '');
     set('Reviews', hasNum(it.reviews) ? it.reviews : ''); set('Qty', it.qty || 1);
