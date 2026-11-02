@@ -37,6 +37,7 @@
   <nav class="tabbar" id="tabbar">
     <button class="tabbtn on" data-pane="list">Priority List</button>
     <button class="tabbtn" data-pane="shopee">🛍 Shopee</button>
+    <button class="tabbtn" data-pane="prep">🛡 Prepared</button>
   </nav>
 
   <div id="paneList">
@@ -101,6 +102,10 @@
       </details>
       <button id="sCopyCart" class="link">Copy cart list</button>
     </section>
+  </div>
+
+  <div id="panePrep" hidden>
+    <div id="prepBody"></div>
   </div>
 
   <footer>
@@ -180,5 +185,6 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="shopee.js"></script>
+<script src="prep.js"></script>
 </body>
 </html>

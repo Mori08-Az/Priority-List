@@ -14,7 +14,7 @@
 
   /* tabs */
   function showPane(p) {
-    $('#paneList').hidden = p !== 'list'; $('#paneShopee').hidden = p !== 'shopee';
+    $('#paneList').hidden = p !== 'list'; $('#paneShopee').hidden = p !== 'shopee'; $('#panePrep').hidden = p !== 'prep';
     document.querySelectorAll('.tabbtn').forEach(b => b.classList.toggle('on', b.dataset.pane === p));
     $('.hero-bottom').hidden = p !== 'list';
     ls.set('pl_tab', p);
@@ -241,6 +241,6 @@
     (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Cart list copied'), () => prompt('Copy this:', text));
   });
 
-  showPane(ls.get('pl_tab') === 'shopee' ? 'shopee' : 'list');
+  showPane(['shopee', 'prep'].includes(ls.get('pl_tab')) ? ls.get('pl_tab') : 'list');
   render();
 })();

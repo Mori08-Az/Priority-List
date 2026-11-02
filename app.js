@@ -13,7 +13,7 @@ function ago(iso) {
 }
 const money = n => n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-let state = { items: [], shopee: [], people: ['Me', 'JD'] };
+let state = { items: [], shopee: [], prep: {}, people: ['Me', 'JD'] };
 let me = ls.get('pl_me') || '';
 let listCode = ls.get('pl_code') || '';
 let store;
@@ -88,7 +88,7 @@ function setSync(m) {
   el.className = 'pill' + (m === 'on' ? ' on' : '');
 }
 function onData(s) {
-  if (s) state = { items: s.items || [], shopee: s.shopee || [], people: s.people && s.people.length ? s.people : state.people };
+  if (s) state = { items: s.items || [], shopee: s.shopee || [], prep: s.prep || {}, people: s.people && s.people.length ? s.people : state.people };
   render();
 }
 async function mutate(fn) {
@@ -207,6 +207,7 @@ function render() {
   w.innerHTML = state.people.map(p => `<option${p === me ? ' selected' : ''}>${esc(p)}</option>`).join('') + '<option value="__add">+ Add person…</option>';
   if (!me || !state.people.includes(me)) { me = state.people[0]; ls.set('pl_me', me); w.value = me; }
   if (window.renderShopee) window.renderShopee();
+  if (window.renderPrep) window.renderPrep();
 }
 
 let toastT;
