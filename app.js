@@ -13,7 +13,7 @@ function ago(iso) {
 }
 const money = n => n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-let state = { items: [], shopee: [], prep: {}, people: ['Me', 'JD'] };
+let state = { items: [], shopee: [], prep: {}, people: ['Amiel', 'JD'] };
 let me = ls.get('pl_me') || '';
 let listCode = ls.get('pl_code') || '';
 let store;
@@ -87,7 +87,20 @@ function setSync(m) {
   el.textContent = m === 'on' ? 'Synced' : m === 'error' ? 'Offline' : 'This device only';
   el.className = 'pill' + (m === 'on' ? ' on' : '');
 }
+// one-time rename: the default person "Me" is now "Amiel" (people list + who added/bought items)
+let renaming = false;
+function renameMe(s) {
+  const fix = n => n === 'Me' ? 'Amiel' : n;
+  s.people = [...new Set((s.people || []).map(fix))];
+  [...(s.items || []), ...(s.shopee || [])].forEach(i => { if (i.addedBy === 'Me') i.addedBy = 'Amiel'; if (i.boughtBy === 'Me') i.boughtBy = 'Amiel'; });
+}
 function onData(s) {
+  if (s && (s.people || []).includes('Me') && !renaming) {
+    renaming = true;
+    if (ls.get('pl_me') === 'Me') { me = 'Amiel'; ls.set('pl_me', me); }
+    store.mutate(renameMe).catch(() => {}).finally(() => { renaming = false; });
+    renameMe(s); // show the new name straight away
+  }
   if (s) state = { items: s.items || [], shopee: s.shopee || [], prep: s.prep || {}, people: s.people && s.people.length ? s.people : state.people };
   render();
 }
