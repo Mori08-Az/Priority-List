@@ -1,44 +1,7 @@
 'use strict';
-/* Prepared page — 72-hour emergency preparedness checklist (Philippines household).
+/* Prepared tab — 72-hour emergency preparedness checklist (Philippines household).
    Stored in the same list document as everything else (field: prep = { done:{id:true}, people:n }). */
 (() => {
-  const $ = q => document.querySelector(q);
-  const ls = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch {} } };
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const cleanCode = v => (v || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
-  let state = { items: [], prep: {} }, store, me = ls.get('pl_me') || '';
-  const listCode = cleanCode(new URLSearchParams(location.search).get('list')) || ls.get('pl_code') || '';
-  let toastT;
-  function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2500); }
-  function onData(s) { if (s) state = { items: s.items || [], prep: s.prep || {} }; render(); }
-  async function mutate(fn) { try { await store.mutate(fn); } catch (e) { toast('Could not save: ' + e.message); } }
-  function localStore() {
-    const key = 'pl_state_' + listCode;
-    const load = () => { try { return JSON.parse(ls.get(key)) || null; } catch { return null; } };
-    return { start(cb) { cb(load()); }, async mutate(fn) { const s = load() || { items: [], people: ['Me', 'JD'] }; fn(s); ls.set(key, JSON.stringify(s)); onData(s); } };
-  }
-  function firebaseStore() {
-    firebase.initializeApp(window.FIREBASE_CONFIG);
-    const db = firebase.firestore(), ref = db.collection('lists').doc(listCode);
-    return {
-      start(cb) { ref.onSnapshot(snap => cb(snap.exists ? snap.data() : null), e => toast('Sync error: ' + e.message)); },
-      async mutate(fn) { await db.runTransaction(async t => { const snap = await t.get(ref); const s = snap.exists ? snap.data() : { items: [], people: ['Me', 'JD'] }; fn(s); t.set(ref, s); }); }
-    };
-  }
-  const loadScript = src => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
-  async function init() {
-    $('#backLink').href = 'index.html' + (listCode ? '?list=' + encodeURIComponent(listCode) : '');
-    if (!listCode) { $('#prepBody').innerHTML = '<div class="card pcard"><p>Open the Priority List first to choose your list code, then come back here.</p></div>'; return; }
-    if (window.FIREBASE_CONFIG) {
-      try {
-        const base = 'https://www.gstatic.com/firebasejs/10.12.2/';
-        await loadScript(base + 'firebase-app-compat.js'); await loadScript(base + 'firebase-firestore-compat.js');
-        store = firebaseStore(); $('#sync').textContent = 'Synced'; $('#sync').className = 'pill on';
-      } catch { toast('Could not load sync - using this device only'); store = localStore(); }
-    } else store = localStore();
-    store.start(onData);
-  }
   // q: which of "The Three Questions" the section answers. wk: week of the gradual build plan.
   // items: [id, label, canBuy] — canBuy items get a "+ list" button that adds them to the Priority List.
   const SECTIONS = [
@@ -151,17 +114,17 @@
   }
 
   /* events */
-  $('#prepBody').addEventListener('change', e => {
+  $('#panePrep').addEventListener('change', e => {
     const t = e.target;
     if (t.dataset.pid) { const id = t.dataset.pid, v = t.checked; mut(p => { if (v) p.done[id] = new Date().toISOString(); else delete p.done[id]; }); }
     else if (t.id === 'prepPeople') { const v = Math.max(1, Math.min(30, +t.value || 1)); mut(p => { p.people = v; }); }
   });
-  $('#prepBody').addEventListener('toggle', e => {
+  $('#panePrep').addEventListener('toggle', e => {
     const sec = e.target.dataset && e.target.dataset.sec; if (!sec) return;
     e.target.open ? open.add(sec) : open.delete(sec);
     ls.set('pl_prep_open', JSON.stringify([...open]));
   }, true);
-  $('#prepBody').addEventListener('click', e => {
+  $('#panePrep').addEventListener('click', e => {
     const a = e.target.closest('[data-padd]');
     if (a) {
       const it = SECTIONS.flatMap(s => s.items).find(i => i[0] === a.dataset.padd); if (!it) return;
@@ -173,7 +136,6 @@
     if (e.target.id === 'prepReset' && confirm('Uncheck everything in the preparedness checklist?')) mut(p => { p.done = {}; });
   });
 
+  window.renderPrep = render;
   render();
-  init();
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

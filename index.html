@@ -23,7 +23,7 @@
           <p class="tag">Most important first.</p>
         </div>
       </div>
-      <div class="pills"><a class="pill" href="prep.html">🛡 Prepared</a><span id="sync" class="pill" title="Sync status">…</span></div>
+      <span id="sync" class="pill" title="Sync status">…</span>
     </div>
     <div class="hero-bottom">
       <div id="summary" class="stats"></div>
@@ -37,6 +37,7 @@
   <nav class="tabbar" id="tabbar">
     <button class="tabbtn on" data-pane="list">Priority List</button>
     <button class="tabbtn" data-pane="shopee">🛍 Shopee</button>
+    <button class="tabbtn" data-pane="prep">🛡 Prepared</button>
   </nav>
 
   <div id="paneList">
@@ -103,10 +104,13 @@
     </section>
   </div>
 
+  <div id="panePrep" hidden>
+    <div id="prepBody"></div>
+  </div>
+
   <footer>
     <div id="listCode"></div>
     <div class="foot-actions">
-      <a class="link" href="prep.html" id="prepLink">🛡 72-hour prepared</a>
       <button id="invite" class="link">Copy invite link</button>
       <button id="switchList" class="link">Change list code</button>
     </div>
@@ -181,5 +185,6 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="shopee.js"></script>
+<script src="prep.js"></script>
 </body>
 </html>

@@ -121,7 +121,7 @@ select.sel{width:100%;background:var(--bg);border:1.5px solid transparent;border
 dialog label{font-size:.75rem;color:var(--muted);display:grid;gap:3px}
 dialog{max-height:92vh;overflow:auto}
 
-.tabbar{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:14px;background:var(--surface);padding:5px;border-radius:16px;box-shadow:var(--shadow)}
+.tabbar{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:14px;background:var(--surface);padding:5px;border-radius:16px;box-shadow:var(--shadow)}
 .tabbtn{border:0;background:none;border-radius:12px;min-height:42px;color:var(--muted)}
 .tabbtn.on{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff}
 .shopee-head{margin-top:14px;padding:12px;display:grid;gap:8px}
@@ -147,10 +147,6 @@ dialog form,dialog label{grid-template-columns:minmax(0,1fr)}
 dialog{max-height:calc(100dvh - 24px);overscroll-behavior:contain}
 body:has(dialog[open]){overflow:hidden}
 
-.pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}a.pill{color:#fff;text-decoration:none}
-a.link{text-decoration:none;display:inline-block}
-.backlink{color:#fff;text-decoration:none;font-weight:600;font-size:.9rem;background:rgba(255,255,255,.16);padding:6px 12px;border-radius:99px}
-.hero-bottom{margin-top:12px}
 /* prepared page */
 #prepBody{margin-top:14px}
 .pcard{padding:14px;margin-top:12px}.pcard h3{margin:0 0 8px;font-size:1rem}.pcard p{margin:0 0 10px}
