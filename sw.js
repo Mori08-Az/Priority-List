@@ -1,4 +1,4 @@
-const CACHE='priority-lost-v21';
+const CACHE='priority-lost-v22';
 const FILES=['./','index.html','style.css','app.js','shopee.js','grocery.js','prep.js','config.js','manifest.webmanifest','icons/icon.svg'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))));self.clients.claim()});
