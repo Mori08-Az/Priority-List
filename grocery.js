@@ -32,6 +32,7 @@
     const hist = all.filter(i => i.hist).sort((a, b) => (b.doneAt || '').localeCompare(a.doneAt || ''));
     const row = i => `<li class="gitem${i.done ? ' got' : ''}" data-gid="${i.id}">
       <label class="gcheck"><input type="checkbox" data-gcheck="${i.id}"${i.done ? ' checked' : ''}><span>${esc(i.name)}</span></label>
+      ${i.done ? '' : GRIP}
       ${i.done ? '' : `<span class="gcatwrap" title="Change category">${CATS.find(c => c[0] === catOf(i))[1]}<select class="gcatsel" data-gsel="${i.id}" aria-label="Category">${CATS.map(c => `<option value="${c[0]}"${c[0] === catOf(i) ? ' selected' : ''}>${c[1]} ${c[2]}</option>`).join('')}</select></span>`}
       <button class="icon" data-gdel="${i.id}" aria-label="Delete" title="Delete">${svg('trash')}</button>
     </li>`;
@@ -101,6 +102,8 @@
     e.target.open ? closed.delete(c) : closed.add(c);
     ls.set('pl_g_closed', JSON.stringify([...closed]));
   }, true);
+
+  makeSortable($('#gList'), { item: '.gitem', handle: '.grip', id: el => el.dataset.gid, onDrop: ids => mut(g => reorderSlots(g, ids)) });
 
   window.renderGrocery = render;
   render();

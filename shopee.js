@@ -182,7 +182,7 @@
     $('#sList').innerHTML = shown.map(({ it, n }) => {
       const d = disc(it), st = it.stage || 'new', pic = picSrc(it), ex = extraOff(it);
       return `<li class="item${n === 0 ? ' next' : ''}" data-id="${it.id}">
-        <div class="rank">${n + 1}</div>
+        <div class="rankcol"><div class="rank">${n + 1}</div>${shown.length > 1 ? GRIP : ''}</div>
         <div>
           <a class="prod" href="${esc(safeUrl(it.url))}" target="_blank" rel="noopener" title="Open on Shopee">
             ${pic ? `<img class="thumb" src="${esc(pic)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
@@ -217,6 +217,7 @@
   /* events */
   $('#sAddForm').addEventListener('submit', e => { e.preventDefault(); add(false); });
   $('#sAddTop').addEventListener('click', () => { if ($('#sAddForm').reportValidity()) add(true); });
+  makeSortable($('#sList'), { item: '.item', handle: '.grip', id: el => el.dataset.id, onDrop: ids => mut(arr => reorderSlots(arr, ids)) });
   $('#sChips').addEventListener('click', e => { const b = e.target.closest('[data-sf]'); if (b) { filter = b.dataset.sf; render(); } });
   $('#paneShopee').addEventListener('click', e => {
     const b = e.target.closest('button[data-sa]'); if (!b) return;
