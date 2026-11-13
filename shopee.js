@@ -14,7 +14,7 @@
 
   /* tabs */
   function showPane(p) {
-    $('#paneList').hidden = p !== 'list'; $('#paneShopee').hidden = p !== 'shopee'; $('#panePrep').hidden = p !== 'prep';
+    $('#paneList').hidden = p !== 'list'; $('#paneShopee').hidden = p !== 'shopee'; $('#paneGrocery').hidden = p !== 'grocery'; $('#panePrep').hidden = p !== 'prep';
     document.querySelectorAll('.tabbtn').forEach(b => b.classList.toggle('on', b.dataset.pane === p));
     $('.hero-bottom').hidden = p !== 'list';
     ls.set('pl_tab', p);

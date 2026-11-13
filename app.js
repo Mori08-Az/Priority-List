@@ -13,7 +13,7 @@ function ago(iso) {
 }
 const money = n => n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
-let state = { items: [], shopee: [], prep: {}, people: ['Amiel', 'JD'] };
+let state = { items: [], shopee: [], grocery: [], prep: {}, people: ['Amiel', 'JD'] };
 let me = ls.get('pl_me') || '';
 let listCode = ls.get('pl_code') || '';
 let store;
@@ -101,7 +101,7 @@ function onData(s) {
     store.mutate(renameMe).catch(() => {}).finally(() => { renaming = false; });
     renameMe(s); // show the new name straight away
   }
-  if (s) state = { items: s.items || [], shopee: s.shopee || [], prep: s.prep || {}, people: s.people && s.people.length ? s.people : state.people };
+  if (s) state = { items: s.items || [], shopee: s.shopee || [], grocery: s.grocery || [], prep: s.prep || {}, people: s.people && s.people.length ? s.people : state.people };
   render();
 }
 async function mutate(fn) {
@@ -220,6 +220,7 @@ function render() {
   w.innerHTML = state.people.map(p => `<option${p === me ? ' selected' : ''}>${esc(p)}</option>`).join('') + '<option value="__add">+ Add person…</option>';
   if (!me || !state.people.includes(me)) { me = state.people[0]; ls.set('pl_me', me); w.value = me; }
   if (window.renderShopee) window.renderShopee();
+  if (window.renderGrocery) window.renderGrocery();
   if (window.renderPrep) window.renderPrep();
 }
 

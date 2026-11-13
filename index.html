@@ -37,6 +37,7 @@
   <nav class="tabbar" id="tabbar">
     <button class="tabbtn on" data-pane="list">Priority List</button>
     <button class="tabbtn" data-pane="shopee">🛍 Shopee</button>
+    <button class="tabbtn" data-pane="grocery">🛒 Grocery</button>
     <button class="tabbtn" data-pane="prep">🛡 Prepared</button>
   </nav>
 
@@ -101,6 +102,19 @@
         <ul id="sHistory" class="list"></ul>
       </details>
       <button id="sCopyCart" class="link">Copy cart list</button>
+    </section>
+  </div>
+
+  <div id="paneGrocery" hidden>
+    <div class="card shopee-head"><div id="gSummary" class="sstats"></div></div>
+    <form id="gAddForm" class="card add">
+      <input id="gName" placeholder="Add item (commas for several)" autocomplete="off" required>
+      <button type="submit" class="btn primary">Add</button>
+    </form>
+    <section>
+      <h2>Grocery</h2>
+      <ul id="gList" class="glist"></ul>
+      <div id="gEmpty" class="empty" hidden><div class="empty-icon">🛒</div><p>No groceries yet.</p><small>Add what you need above, then tick it off at the store.</small></div>
     </section>
   </div>
 
@@ -185,6 +199,7 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="shopee.js"></script>
+<script src="grocery.js"></script>
 <script src="prep.js"></script>
 </body>
 </html>
