@@ -193,7 +193,7 @@ function render() {
   $('#empty').hidden = act.length > 0;
   $('#list').innerHTML = act.map((it, n) => `
     <li class="item${n === 0 ? ' next' : ''}" data-id="${it.id}">
-      <div class="rank">${n + 1}</div>
+      <div class="rankcol"><div class="rank">${n + 1}</div>${act.length > 1 ? GRIP : ''}</div>
       <div>
         <div class="title">${esc(it.name)}${it.qty > 1 ? ` <span class="qty">×${it.qty}</span>` : ''}${n === 0 ? '<span class="badge">Buy next</span>' : ''}</div>
         ${it.note ? `<div class="note">${esc(it.note)}</div>` : ''}
@@ -235,6 +235,7 @@ document.addEventListener('click', e => {
   const id = b.closest('li').dataset.id;
   ({ top: () => move(id, 'top'), up: () => move(id, -1), down: () => move(id, 1), buy: () => buy(id), edit: () => openEdit(id), del: () => remove(id), restore: () => restore(id) })[b.dataset.a]();
 });
+makeSortable($('#list'), { item: '.item', handle: '.grip', id: el => el.dataset.id, onDrop: ids => mutate(s => reorderSlots(s.items, ids)) });
 $('#who').addEventListener('change', e => {
   if (e.target.value === '__add') {
     const n = (prompt('Name of the new person:') || '').trim();
